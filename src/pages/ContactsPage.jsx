@@ -22,10 +22,18 @@ const CONTACT_STATUSES = [
 // alloy/ash/echo/shimmer/verse/ballad/coral/sage son las voces clasicas;
 // marin/cedar son las nuevas de gpt-realtime-2, mas naturales/expresivas.
 const VOICES = ['cedar', 'marin', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'];
-const LANGUAGES = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'English' },
+// Cada acento fija tambien el idioma base (moneda, "siempre habla en X") --
+// ver ACCENT_STYLE_BY_CODE en promptBuilder.js. Agregar un acento nuevo
+// requiere agregarlo aqui Y alla.
+const ACCENTS = [
+  { value: 'es_CO', label: 'Español (Colombia)', language: 'es' },
+  { value: 'es_PR', label: 'Español (Puerto Rico)', language: 'es' },
+  { value: 'en_US', label: 'English (US)', language: 'en' },
 ];
+
+function languageForAccent(accent) {
+  return ACCENTS.find((a) => a.value === accent)?.language || 'es';
+}
 
 const CONTACTS_JSON_PLACEHOLDER = `[
   { "phone_number": "+573001112233", "full_name": "Anderson Zarate", "balance_due": 50000 }
@@ -39,7 +47,7 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
     name: '',
     type: 'cobranza',
     voice: 'cedar',
-    language: 'es',
+    accent: 'es_CO',
     speed: 1,
     systemPromptTemplate:
       'Eres un agente de cobranza de Voxia. Hablas con {{full_name}} al numero {{phone_number}}. ' +
@@ -75,7 +83,8 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
 
     setSubmitting(true);
     try {
-      const payload = isAdmin ? { ...form, organizationId } : form;
+      const base = { ...form, language: languageForAccent(form.accent) };
+      const payload = isAdmin ? { ...base, organizationId } : base;
       const campaign = await createCampaign(payload);
       onCreated(campaign);
       setForm((f) => ({ ...f, name: '' }));
@@ -129,10 +138,10 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
           </select>
         </div>
         <div className="form-field">
-          <label htmlFor="language">Idioma de la llamada</label>
-          <select id="language" value={form.language} onChange={(e) => update('language', e.target.value)}>
-            {LANGUAGES.map((l) => (
-              <option key={l.value} value={l.value}>{l.label}</option>
+          <label htmlFor="accent">Idioma y acento</label>
+          <select id="accent" value={form.accent} onChange={(e) => update('accent', e.target.value)}>
+            {ACCENTS.map((a) => (
+              <option key={a.value} value={a.value}>{a.label}</option>
             ))}
           </select>
         </div>
@@ -169,7 +178,7 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
 
 function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
   const [voice, setVoice] = useState(campaign.voice);
-  const [language, setLanguage] = useState(campaign.language);
+  const [accent, setAccent] = useState(campaign.accent || 'es_CO');
   const [speed, setSpeed] = useState(Number(campaign.speed) || 1);
   const [systemPromptTemplate, setSystemPromptTemplate] = useState(campaign.system_prompt_template);
   const [error, setError] = useState(null);
@@ -180,19 +189,19 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
   // Si cambias de campaña seleccionada, refleja los valores de la nueva.
   useEffect(() => {
     setVoice(campaign.voice);
-    setLanguage(campaign.language);
+    setAccent(campaign.accent || 'es_CO');
     setSpeed(Number(campaign.speed) || 1);
     setSystemPromptTemplate(campaign.system_prompt_template);
     setSaved(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaign.id, campaign.voice, campaign.language, campaign.speed, campaign.system_prompt_template]);
+  }, [campaign.id, campaign.voice, campaign.accent, campaign.speed, campaign.system_prompt_template]);
 
   async function handleSave() {
     setError(null);
     setSaved(null);
     setSubmitting(true);
     try {
-      await updateCampaign(campaign.id, { voice, language, speed, systemPromptTemplate });
+      await updateCampaign(campaign.id, { voice, accent, language: languageForAccent(accent), speed, systemPromptTemplate });
       setSaved('Guardado. La próxima llamada ya usa estos cambios.');
       onUpdated();
     } catch (err) {
@@ -237,10 +246,10 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
           </select>
         </div>
         <div className="form-field">
-          <label htmlFor="edit-language">Idioma de la llamada</label>
-          <select id="edit-language" value={language} onChange={(e) => setLanguage(e.target.value)}>
-            {LANGUAGES.map((l) => (
-              <option key={l.value} value={l.value}>{l.label}</option>
+          <label htmlFor="edit-accent">Idioma y acento</label>
+          <select id="edit-accent" value={accent} onChange={(e) => setAccent(e.target.value)}>
+            {ACCENTS.map((a) => (
+              <option key={a.value} value={a.value}>{a.label}</option>
             ))}
           </select>
         </div>
