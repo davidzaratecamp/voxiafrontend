@@ -57,20 +57,6 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
   const [organizations, setOrganizations] = useState([]);
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
-  const { user } = useAuth();
-
-  // Voz/acento/velocidad/guion solo aplican a campanas de OpenAI -- un
-  // cliente de un proveedor de prueba (ElevenLabs, Hume) tiene su agente ya
-  // configurado en el dashboard de ese proveedor, Voxia no le manda nada de
-  // eso. Se detecta el proveedor del cliente destino (el elegido por el
-  // admin, o el propio si es un usuario "client") para ocultar esos campos
-  // y evitar la confusion de "elegi otro proveedor pero me siguen saliendo
-  // voces de OpenAI".
-  const EXTERNAL_AGENT_PROVIDERS = ['elevenlabs_twilio', 'hume_evi_twilio'];
-  const targetProvider = isAdmin
-    ? organizations.find((o) => String(o.id) === String(organizationId))?.telephony_provider
-    : user?.telephonyProvider;
-  const isExternalAgent = EXTERNAL_AGENT_PROVIDERS.includes(targetProvider);
 
   useEffect(() => {
     if (isAdmin) {
@@ -143,55 +129,43 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
             ))}
           </select>
         </div>
-        {isExternalAgent ? (
-          <div className="form-field full">
-            <div className="banner" style={{ margin: 0 }}>
-              Este cliente usa un proveedor de prueba ({targetProvider}): la voz, personalidad y guion del
-              agente se configuran en su propio dashboard, no aquí. Solo necesitas el nombre de la campaña —
-              los demás campos de esta pantalla se ignoran para este proveedor.
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="form-field">
-              <label htmlFor="voice">Voz del agente</label>
-              <select id="voice" value={form.voice} onChange={(e) => update('voice', e.target.value)}>
-                {VOICES.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="accent">Idioma y acento</label>
-              <select id="accent" value={form.accent} onChange={(e) => update('accent', e.target.value)}>
-                {ACCENTS.map((a) => (
-                  <option key={a.value} value={a.value}>{a.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="speed">Velocidad de habla ({Number(form.speed).toFixed(2)}x)</label>
-              <input
-                id="speed"
-                type="range"
-                min="0.25"
-                max="1.5"
-                step="0.05"
-                value={form.speed}
-                onChange={(e) => update('speed', Number(e.target.value))}
-              />
-            </div>
-            <div className="form-field full">
-              <label htmlFor="prompt">Instrucciones del agente (usa {'{{full_name}}'}, {'{{phone_number}}'}, {'{{balance_due}}'})</label>
-              <textarea
-                id="prompt"
-                value={form.systemPromptTemplate}
-                onChange={(e) => update('systemPromptTemplate', e.target.value)}
-                required
-              />
-            </div>
-          </>
-        )}
+        <div className="form-field">
+          <label htmlFor="voice">Voz del agente</label>
+          <select id="voice" value={form.voice} onChange={(e) => update('voice', e.target.value)}>
+            {VOICES.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="accent">Idioma y acento</label>
+          <select id="accent" value={form.accent} onChange={(e) => update('accent', e.target.value)}>
+            {ACCENTS.map((a) => (
+              <option key={a.value} value={a.value}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="speed">Velocidad de habla ({Number(form.speed).toFixed(2)}x)</label>
+          <input
+            id="speed"
+            type="range"
+            min="0.25"
+            max="1.5"
+            step="0.05"
+            value={form.speed}
+            onChange={(e) => update('speed', Number(e.target.value))}
+          />
+        </div>
+        <div className="form-field full">
+          <label htmlFor="prompt">Instrucciones del agente (usa {'{{full_name}}'}, {'{{phone_number}}'}, {'{{balance_due}}'})</label>
+          <textarea
+            id="prompt"
+            value={form.systemPromptTemplate}
+            onChange={(e) => update('systemPromptTemplate', e.target.value)}
+            required
+          />
+        </div>
       </div>
       <div className="btn-row">
         <button className="btn" type="submit" disabled={submitting}>
@@ -254,8 +228,6 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
     }
   }
 
-  const isExternalAgent = ['elevenlabs_twilio', 'hume_evi_twilio'].includes(campaign.telephony_provider);
-
   return (
     <div className="panel">
       <h2>Editar "{campaign.name}"</h2>
@@ -265,61 +237,47 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
       {error && <div className="banner error">{error}</div>}
       {saved && <div className="banner success">{saved}</div>}
       <div className="form-grid">
-        {isExternalAgent ? (
-          <div className="form-field full">
-            <div className="banner" style={{ margin: 0 }}>
-              Esta campaña usa un proveedor de prueba ({campaign.telephony_provider}): la voz, personalidad y
-              guion del agente se configuran en su propio dashboard, no aquí. No hay nada que editar en esta
-              pantalla para este proveedor.
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="form-field">
-              <label htmlFor="edit-voice">Voz del agente</label>
-              <select id="edit-voice" value={voice} onChange={(e) => setVoice(e.target.value)}>
-                {VOICES.map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="edit-accent">Idioma y acento</label>
-              <select id="edit-accent" value={accent} onChange={(e) => setAccent(e.target.value)}>
-                {ACCENTS.map((a) => (
-                  <option key={a.value} value={a.value}>{a.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-field">
-              <label htmlFor="edit-speed">Velocidad de habla ({speed.toFixed(2)}x)</label>
-              <input
-                id="edit-speed"
-                type="range"
-                min="0.25"
-                max="1.5"
-                step="0.05"
-                value={speed}
-                onChange={(e) => setSpeed(Number(e.target.value))}
-              />
-            </div>
-            <div className="form-field full">
-              <label htmlFor="edit-prompt">Instrucciones del agente</label>
-              <textarea
-                id="edit-prompt"
-                value={systemPromptTemplate}
-                onChange={(e) => setSystemPromptTemplate(e.target.value)}
-              />
-            </div>
-          </>
-        )}
+        <div className="form-field">
+          <label htmlFor="edit-voice">Voz del agente</label>
+          <select id="edit-voice" value={voice} onChange={(e) => setVoice(e.target.value)}>
+            {VOICES.map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="edit-accent">Idioma y acento</label>
+          <select id="edit-accent" value={accent} onChange={(e) => setAccent(e.target.value)}>
+            {ACCENTS.map((a) => (
+              <option key={a.value} value={a.value}>{a.label}</option>
+            ))}
+          </select>
+        </div>
+        <div className="form-field">
+          <label htmlFor="edit-speed">Velocidad de habla ({speed.toFixed(2)}x)</label>
+          <input
+            id="edit-speed"
+            type="range"
+            min="0.25"
+            max="1.5"
+            step="0.05"
+            value={speed}
+            onChange={(e) => setSpeed(Number(e.target.value))}
+          />
+        </div>
+        <div className="form-field full">
+          <label htmlFor="edit-prompt">Instrucciones del agente</label>
+          <textarea
+            id="edit-prompt"
+            value={systemPromptTemplate}
+            onChange={(e) => setSystemPromptTemplate(e.target.value)}
+          />
+        </div>
       </div>
       <div className="btn-row">
-        {!isExternalAgent && (
-          <button className="btn" onClick={handleSave} disabled={submitting}>
-            {submitting ? 'Guardando...' : 'Guardar cambios'}
-          </button>
-        )}
+        <button className="btn" onClick={handleSave} disabled={submitting}>
+          {submitting ? 'Guardando...' : 'Guardar cambios'}
+        </button>
         <button className="btn secondary" onClick={handleDelete} disabled={deleting} style={{ color: 'var(--status-critical)' }}>
           {deleting ? 'Eliminando...' : 'Eliminar campaña'}
         </button>
