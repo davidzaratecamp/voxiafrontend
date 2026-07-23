@@ -60,16 +60,17 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
   const { user } = useAuth();
 
   // Voz/acento/velocidad/guion solo aplican a campanas de OpenAI -- un
-  // cliente de ElevenLabs (proveedor de prueba) tiene su agente ya
-  // configurado en el dashboard de ElevenLabs (agent_id), Voxia no le manda
-  // nada de eso. Se detecta el proveedor del cliente destino (el elegido
-  // por el admin, o el propio si es un usuario "client") para ocultar esos
-  // campos y evitar la confusion de "elegi ElevenLabs pero me siguen
-  // saliendo voces de OpenAI".
+  // cliente de un proveedor de prueba (ElevenLabs, Hume) tiene su agente ya
+  // configurado en el dashboard de ese proveedor, Voxia no le manda nada de
+  // eso. Se detecta el proveedor del cliente destino (el elegido por el
+  // admin, o el propio si es un usuario "client") para ocultar esos campos
+  // y evitar la confusion de "elegi otro proveedor pero me siguen saliendo
+  // voces de OpenAI".
+  const EXTERNAL_AGENT_PROVIDERS = ['elevenlabs_twilio', 'hume_evi_twilio'];
   const targetProvider = isAdmin
     ? organizations.find((o) => String(o.id) === String(organizationId))?.telephony_provider
     : user?.telephonyProvider;
-  const isElevenLabs = targetProvider === 'elevenlabs_twilio';
+  const isExternalAgent = EXTERNAL_AGENT_PROVIDERS.includes(targetProvider);
 
   useEffect(() => {
     if (isAdmin) {
@@ -142,12 +143,12 @@ function CreateCampaignForm({ isAdmin, defaultOrganizationId, onCreated }) {
             ))}
           </select>
         </div>
-        {isElevenLabs ? (
+        {isExternalAgent ? (
           <div className="form-field full">
             <div className="banner" style={{ margin: 0 }}>
-              Este cliente usa ElevenLabs (proveedor de prueba): la voz, personalidad y guion del agente se
-              configuran en el dashboard de ElevenLabs (agent_id), no aquí. Solo necesitas el nombre de la
-              campaña — los demás campos de esta pantalla se ignoran para este proveedor.
+              Este cliente usa un proveedor de prueba ({targetProvider}): la voz, personalidad y guion del
+              agente se configuran en su propio dashboard, no aquí. Solo necesitas el nombre de la campaña —
+              los demás campos de esta pantalla se ignoran para este proveedor.
             </div>
           </div>
         ) : (
@@ -253,7 +254,7 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
     }
   }
 
-  const isElevenLabs = campaign.telephony_provider === 'elevenlabs_twilio';
+  const isExternalAgent = ['elevenlabs_twilio', 'hume_evi_twilio'].includes(campaign.telephony_provider);
 
   return (
     <div className="panel">
@@ -264,11 +265,11 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
       {error && <div className="banner error">{error}</div>}
       {saved && <div className="banner success">{saved}</div>}
       <div className="form-grid">
-        {isElevenLabs ? (
+        {isExternalAgent ? (
           <div className="form-field full">
             <div className="banner" style={{ margin: 0 }}>
-              Esta campaña usa ElevenLabs (proveedor de prueba): la voz, personalidad y guion del agente se
-              configuran en el dashboard de ElevenLabs (agent_id), no aquí. No hay nada que editar en esta
+              Esta campaña usa un proveedor de prueba ({campaign.telephony_provider}): la voz, personalidad y
+              guion del agente se configuran en su propio dashboard, no aquí. No hay nada que editar en esta
               pantalla para este proveedor.
             </div>
           </div>
@@ -314,7 +315,7 @@ function EditCampaignPanel({ campaign, onUpdated, onDeleted }) {
         )}
       </div>
       <div className="btn-row">
-        {!isElevenLabs && (
+        {!isExternalAgent && (
           <button className="btn" onClick={handleSave} disabled={submitting}>
             {submitting ? 'Guardando...' : 'Guardar cambios'}
           </button>
